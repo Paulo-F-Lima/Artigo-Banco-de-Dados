@@ -1,0 +1,4 @@
+write_concern,throughput_ops_s,lat_media_ms,lat_p95_ms,lat_p99_ms,registros_enviados,registros_confirmados
+w=1 (eventual),1678.93,16.40,20.25,36.76,50500,50500
+w=majority (forte),1300.33,14.81,20.11,45.10,39000,39000
+w=3 (todos),1490.69,21.83,34.09,42.91,45000,45000

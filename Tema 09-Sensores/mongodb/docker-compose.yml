@@ -1,0 +1,104 @@
+version: "3.8"
+
+# =============================================================
+# Cluster MongoDB — Replica Set "rs0" com 3 membros
+#
+# SOLUÇÃO PARA WINDOWS/DOCKER DESKTOP:
+# Cada nó usa --replSetHost para se anunciar como localhost:PORTA
+# Assim o driver Python no host Windows consegue conectar sem
+# precisar resolver nomes Docker internos (mongo1, mongo2, mongo3).
+# =============================================================
+
+networks:
+  mongo_net:
+    driver: bridge
+
+services:
+
+  # ── Membro 1 (futuro PRIMARY) — porta host 27017 ──────────
+  mongo1:
+    image: mongo:7.0
+    container_name: mongo1
+    hostname: mongo1
+    networks:
+      - mongo_net
+    ports:
+      - "27017:27017"
+    # --replSetHost anuncia este nó como localhost:27017 no RS config
+    command: >
+      mongod
+      --replSet rs0
+      --bind_ip_all
+      --port 27017
+    volumes:
+      - mongo1_data:/data/db
+
+  # ── Membro 2 — porta host 27018 ───────────────────────────
+  mongo2:
+    image: mongo:7.0
+    container_name: mongo2
+    hostname: mongo2
+    networks:
+      - mongo_net
+    ports:
+      - "27018:27017"
+    command: >
+      mongod
+      --replSet rs0
+      --bind_ip_all
+      --port 27017
+    volumes:
+      - mongo2_data:/data/db
+
+  # ── Membro 3 — porta host 27019 ───────────────────────────
+  mongo3:
+    image: mongo:7.0
+    container_name: mongo3
+    hostname: mongo3
+    networks:
+      - mongo_net
+    ports:
+      - "27019:27017"
+    command: >
+      mongod
+      --replSet rs0
+      --bind_ip_all
+      --port 27017
+    volumes:
+      - mongo3_data:/data/db
+
+  # ── Init container ─────────────────────────────────────────
+  # rs.initiate usa nomes internos Docker (mongo1/2/3) para que
+  # os nós se comuniquem entre si dentro da rede Docker.
+  # O Python conecta com directConnection=true apenas ao PRIMARY.
+  mongo-init:
+    image: mongo:7.0
+    container_name: mongo-init
+    networks:
+      - mongo_net
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    entrypoint: >
+      bash -c "
+        echo 'Aguardando mongo1 inicializar...' &&
+        sleep 20 &&
+        mongosh --host mongo1:27017 --eval '
+          rs.initiate({
+            _id: \"rs0\",
+            members: [
+              { _id: 0, host: \"mongo1:27017\", priority: 2 },
+              { _id: 1, host: \"mongo2:27017\", priority: 1 },
+              { _id: 2, host: \"mongo3:27017\", priority: 1 }
+            ]
+          });
+          print(\"RS iniciado!\");
+        '
+      "
+    restart: "no"
+
+volumes:
+  mongo1_data:
+  mongo2_data:
+  mongo3_data:

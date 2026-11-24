@@ -1,0 +1,85 @@
+version: "3.8"
+
+# =============================================================
+# Cluster Cassandra — 3 nós com JVM limitada a 512 MB cada
+# Cada nó usa ~600 MB RAM. Total aprox. 2 GB para o cluster.
+# =============================================================
+
+networks:
+  cassandra_net:
+    driver: bridge
+
+services:
+
+  # ── Nó 1: seed do cluster ──────────────────────────────────
+  cassandra-1:
+    image: cassandra:4.1
+    container_name: cassandra-1
+    hostname: cassandra-1
+    networks:
+      - cassandra_net
+    ports:
+      - "9042:9042"          # CQL nativo (porta do driver Python)
+    environment:
+      CASSANDRA_CLUSTER_NAME: "FazendaCluster"
+      CASSANDRA_DC: "dc1"
+      CASSANDRA_RACK: "rack1"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+      CASSANDRA_SEEDS: "cassandra-1"   # seed
+      MAX_HEAP_SIZE: "512M"            # JVM heap máximo
+      HEAP_NEWSIZE: "100M"             # JVM young gen
+    healthcheck:
+      test: ["CMD", "nodetool", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+    volumes:
+      - cassandra1_data:/var/lib/cassandra
+
+  # ── Nó 2 ──────────────────────────────────────────────────
+  cassandra-2:
+    image: cassandra:4.1
+    container_name: cassandra-2
+    hostname: cassandra-2
+    networks:
+      - cassandra_net
+    environment:
+      CASSANDRA_CLUSTER_NAME: "FazendaCluster"
+      CASSANDRA_DC: "dc1"
+      CASSANDRA_RACK: "rack1"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+      CASSANDRA_SEEDS: "cassandra-1"
+      MAX_HEAP_SIZE: "512M"
+      HEAP_NEWSIZE: "100M"
+    depends_on:
+      cassandra-1:
+        condition: service_healthy
+    volumes:
+      - cassandra2_data:/var/lib/cassandra
+
+  # ── Nó 3 ──────────────────────────────────────────────────
+  cassandra-3:
+    image: cassandra:4.1
+    container_name: cassandra-3
+    hostname: cassandra-3
+    networks:
+      - cassandra_net
+    environment:
+      CASSANDRA_CLUSTER_NAME: "FazendaCluster"
+      CASSANDRA_DC: "dc1"
+      CASSANDRA_RACK: "rack1"
+      CASSANDRA_ENDPOINT_SNITCH: "GossipingPropertyFileSnitch"
+      CASSANDRA_SEEDS: "cassandra-1"
+      MAX_HEAP_SIZE: "512M"
+      HEAP_NEWSIZE: "100M"
+    depends_on:
+      cassandra-1:
+        condition: service_healthy
+    volumes:
+      - cassandra3_data:/var/lib/cassandra
+
+volumes:
+  cassandra1_data:
+  cassandra2_data:
+  cassandra3_data:

@@ -1,0 +1,4 @@
+nivel,throughput_ops_s,lat_media_ms,lat_p95_ms,lat_p99_ms,registros_enviados,registros_confirmados
+ONE,2616.15,23.64,52.57,165.21,78500,78500
+QUORUM,2442.65,35.54,50.03,162.08,73000,73000
+ALL,2347.21,35.21,51.72,148.93,70500,70500
